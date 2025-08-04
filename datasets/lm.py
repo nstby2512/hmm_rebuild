@@ -60,6 +60,59 @@ class LanguageModelingDataset(data.Dataset):
         #继承data.Dataset的init
         super(LanguageModelingDataset, self).__init__(
             examples, fields, **kwargs)
+        
+class PennTreebank(LanguageModelingDataset):
+    urls = ['https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.train.txt',
+            'https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.valid.txt',
+            'https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.test.txt']
+    name = 'penn-treebank'
+    dirname = ''
+
+    @classmethod
+    def splits(cls, text_field, root = '.data', train = 'ptb.train.txt', 
+               validation = 'ptb.valid.txt', test = 'ptb.test.txt', **kwargs ):
+        return super(PennTreebank, cls).splits(root = root, train = train, 
+                validation = validation, test = test, text_field = text_field, 
+                articles = False, **kwargs)
+    
+    @classmethod
+    def iters(cls, batch_size = 32, bptt_len = 35, device = 0, 
+              root = '.data', vectors = None, **kwargs):
+        TEXT = data.Field()
+        train, val, test = cls.splits(TEXT, root = root, **kwargs)
+        TEXT.build_vocab(train, vectors=vectors)
+        
+        return data.BPTTIterator.splits(
+            (train, val, test), batch_size=batch_size, bptt_len=bptt_len,
+            device=device)
+    
+class WikiText2(LanguageModelingDataset):
+
+    urls = ['https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-v1.zip']
+    name = 'wikitext-2'
+    dirname = 'wikitext-2'
+
+    @classmethod
+    def splits(cls, text_field, root='.data', train='wiki.train.tokens',
+               validation='wiki.valid.tokens', test='wiki.test.tokens',
+               **kwargs):
+        return super(WikiText2, cls).splits(
+            root=root, train=train, validation=validation, test=test,
+            text_field=text_field, articles=True, **kwargs)
+    
+    @classmethod
+    def iters(cls, batch_size=32, bptt_len=35, device=0, root='.data',
+                  vectors=None, **kwargs):
+        TEXT = data.Field()
+        train, val, test = cls.splits(TEXT, root=root, **kwargs)
+        TEXT.build_vocab(train, vectors=vectors)
+
+        return data.BPTTIterator.splits(
+            (train, val, test), batch_size=batch_size, bptt_len=bptt_len,
+            device=device)
+                
+
+
 
 
 
