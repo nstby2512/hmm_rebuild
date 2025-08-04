@@ -5,6 +5,7 @@ from args import get_args
 from utils import set_seed, get_name
 
 from datasets.lm import PennTreebank, WikiText2
+from datasets.data import BucketIterator, BPTTIterator
 
 
 WANDB_STEP = -1
@@ -43,7 +44,7 @@ def main():
     def batch_size_sents(new, count, sofar):
         return count
 
-    #选择迭代器 bucket（按照句子）/bptt（按照token）
+    #选择迭代器 bucket按照句子/bptt按照token（在datasets/data.py中）
     if args.iterator == "bucket":
         train_iter, valid_iter, test_iter = BucketIterator.splits(
             (train, valid, test),
@@ -66,13 +67,23 @@ def main():
     if args.no_shuffle_train:
         train_iter.shuffle = False
 
+    #初始化wandb
     name = get_name(args)
     import tempfile
     wandb.init(project="hmm-lm", name=name, config=args, dir=tempfile.mkdtemp())
     args.name = name
 
+    #导入hmmlm模型
     model = None
-    
+
+    #仅评测模式
+    if args.eval_only:
+        pass
+
+
+    #选择更新参数的optimizer和调整学习率的scheduler
+
+
 
     
 
