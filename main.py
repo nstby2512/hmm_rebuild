@@ -224,8 +224,57 @@ def main():
             scheduler.step(
                 valid_losses.evidence if not args.overfit else train_losses.evidence)       #overfit模式是只用一小个batch去重复训练，来测试
         
+        update_best_valid(valid_losses, valid_n, model, optimizer, scheduler, args.name)
 
+        wandb.log({
+            "train_loss": train_losses.evidence / train_n,
+            "train_ppl": math.exp(-train_losses.evidence / train_n),
+            "epoch_time": total_time,
+            "valid_loss": valid_losses.evidence / valid_n,
+            "valid_ppl": math.exp(-valid_losses.evidence / valid_n),
+            "best_valid_loss": BEST_VALID / valid_n,
+            "best_valid_ppl": math.exp(-BEST_VALID / valid_n),
+            "epoch": e,
 
+        } , step = WANDB_STEP)
+
+        if args.log_counts > 0 and args.keep_counts > 0 :
+            counts = (model.counts / model.counts.sum(0, keepdim=True))[:,4:]
+            c, v = counts.shape
+            cg2 = counts > 1e-2
+
+            # state counts
+            # log these once per epoch, then set back to zero
+            sc0 = (model.state_counts == 0).sum()
+            sc1 = (model.state_counts == 1).sum()
+            sc2 = (model.state_counts == 2).sum()
+            sc3 = (model.state_counts == 3).sum()
+            sc4 = (model.state_counts == 4).sum()
+            sc5 = (model.state_counts >= 5).sum()
+
+            wandb.log({
+                "avgcounts@1e-2": cg2.sum().item() / float(v),
+                "maxcounts@1e-2": cg2.sum(0).max().item(),
+                "mincounts@1e-2": cg2.sum(0).min().item(),
+                "maxcounts": counts.sum(0).max().item(),
+                "mincounts": counts.sum(0).min().item(),
+
+                "statecounts=0": sc0,
+                "statecounts=1": sc1,
+                "statecounts=2": sc2,
+                "statecounts=3": sc3,
+                "statecounts=4": sc4,
+                "statecounts>=5": sc5,
+            }, step=WANDB_STEP)
+            del cg2
+            del counts
+    
+    #测评过程
+    t_start_time = time.time()
+    test_losses, test_n = eval_fn(
+        args, V, test_iter, model,
+    )
+    report(test_losses, test_n, f"Test perf", t_start_time)
 
 
     
